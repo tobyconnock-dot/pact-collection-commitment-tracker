@@ -324,49 +324,6 @@ function MemberPortalView({ member }: { member: MemberData }) {
         <p className="text-gray-400 text-sm mt-1">Cycle: Apr 2026 - Mar 2027</p>
       </div>
 
-      {/* Hero Stat - Progress % with circular indicator */}
-      <div className="bg-[#49868C] rounded-xl p-6 mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white/70 text-sm mb-1">Progress to Commitment</p>
-            <p className="text-5xl font-semibold text-white">{Math.round(percentage)}%</p>
-            <p className="text-white/70 text-sm mt-2">
-              {totalLbs.toLocaleString()} of {proratedCommitment.toLocaleString()} lbs collected
-            </p>
-          </div>
-          {/* Circular Progress Indicator */}
-          <div className="relative w-24 h-24">
-            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="rgba(255,255,255,0.2)"
-                strokeWidth="8"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="white"
-                strokeWidth="8"
-                strokeDasharray={`${Math.min(percentage, 100) * 2.51} 251`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-center">
-              <span className="text-white/80 text-[10px] font-medium leading-tight">
-                {remainingLbs > 0 ? (
-                  <>{remainingLbs.toLocaleString()}<br />to go</>
-                ) : 'Complete!'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Pro-ration Notice - only if applicable */}
       {monthsInCycle < TOTAL_CYCLE_MONTHS && (
         <div className="bg-amber-50 border border-amber-200 rounded px-4 py-3 mb-6">
@@ -376,51 +333,150 @@ function MemberPortalView({ member }: { member: MemberData }) {
         </div>
       )}
 
-      {/* Monthly Collections - April to March cycle */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-        <h2 className="text-gray-700 font-medium mb-4">Monthly Collections</h2>
-        {(() => {
-          // Demo: distribute totalLbs across first 6 months (Apr-Sep), rest are future
-          const months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-          const distribution = [0.12, 0.14, 0.16, 0.18, 0.20, 0.20, 0, 0, 0, 0, 0, 0]
-
-          // Original even-split target for comparison
-          const originalTarget = Math.round(proratedCommitment / 12)
-
-          return (
-            <div className="grid grid-cols-6 gap-2">
-              {months.map((month, i) => {
-                const lbs = Math.round(totalLbs * distribution[i])
-                const isFuture = distribution[i] === 0
-                const aboveTarget = lbs >= originalTarget
-                // Green = on track, Orange = behind but progressing, Gray = future
-                const bgColor = isFuture ? 'bg-gray-50' : aboveTarget ? 'bg-green-50' : 'bg-orange-50'
-                const textColor = isFuture ? 'text-gray-300' : aboveTarget ? 'text-green-600' : 'text-orange-600'
-                return (
-                  <div key={month} className={`text-center p-2 rounded ${bgColor}`}>
-                    <div className={`text-xs mb-1 ${isFuture ? 'text-gray-300' : 'text-gray-500'}`}>{month}</div>
-                    <div className={`text-sm font-medium ${textColor}`}>
-                      {isFuture ? '-' : lbs.toLocaleString()}
-                    </div>
-                  </div>
-                )
-              })}
+      {/* Progress and Monthly Collections - Side by side */}
+      <div className="flex flex-col lg:flex-row gap-6 mb-6">
+        {/* Progress Card */}
+        <div className="bg-white rounded-xl border border-gray-100 p-6 lg:flex-shrink-0">
+          <div className="flex flex-col-reverse gap-4 items-baseline">
+            {/* Percentage and collected amount */}
+            <div>
+              <p className={`text-5xl font-normal ${
+                percentage >= 70 ? 'text-green-600' :
+                percentage >= 50 ? 'text-orange-500' :
+                'text-red-400'
+              }`}>
+                {Math.round(percentage)}%
+              </p>
+              <p className="text-black/70 text-sm mt-4">
+                {totalLbs.toLocaleString()} of {proratedCommitment.toLocaleString()} lbs collected
+              </p>
             </div>
-          )
-        })()}
-        {(() => {
-          const monthsElapsed = 6  // Demo: 6 months of data
-          const monthsRemaining = 12 - monthsElapsed
-          if (remainingLbs <= 0) {
-            return <p className="text-xs text-green-600 mt-3 font-medium">Commitment reached!</p>
-          }
-          const neededPerMonth = Math.round(remainingLbs / Math.max(monthsRemaining, 1))
-          return (
-            <p className="text-xs text-gray-500 mt-3">
-              To stay on track: <span className="font-medium text-gray-700">{neededPerMonth.toLocaleString()} lbs/month</span> for remaining {monthsRemaining} months
-            </p>
-          )
-        })()}
+
+            {/* Circular Progress Indicator */}
+            <div className="relative w-[120px] h-[120px]">
+              <svg className="w-[120px] h-[120px] -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke="rgba(0,0,0,0.2)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke={
+                    percentage >= 70 ? 'rgb(22, 163, 74)' :
+                    percentage >= 50 ? 'rgb(249, 115, 22)' :
+                    'rgb(248, 113, 113)'
+                  }
+                  strokeWidth="8"
+                  strokeDasharray={`${Math.min(percentage, 100) * 2.51} 251`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-center">
+                <span className="text-black/80 text-[10px] font-medium leading-tight uppercase">
+                  {remainingLbs > 0 ? (
+                    <>{remainingLbs.toLocaleString()} lbs<br />to go</>
+                  ) : 'Complete!'}
+                </span>
+              </div>
+            </div>
+
+            {/* Label */}
+            <p className="text-gray-700 font-medium">Progress to Commitment</p>
+          </div>
+        </div>
+
+        {/* Monthly Collections */}
+        <div className="bg-white rounded-xl border border-gray-100 p-6 flex-grow">
+          <h2 className="text-gray-700 font-medium mb-4">Monthly Collections</h2>
+          {(() => {
+            // Demo: distribute totalLbs across first 6 months (Apr-Sep), rest are future
+            const months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+            const distribution = [0.12, 0.14, 0.16, 0.18, 0.20, 0.20, 0, 0, 0, 0, 0, 0]
+            const originalTarget = Math.round(proratedCommitment / 12)
+            const currentMonthIndex = 6  // Demo: October is current month
+
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {months.map((month, i) => {
+                  const lbs = Math.round(totalLbs * distribution[i])
+                  const isFuture = distribution[i] === 0
+                  const isCurrent = i === currentMonthIndex
+                  const aboveTarget = lbs >= originalTarget
+                  const diff = Math.abs(lbs - originalTarget)
+
+                  // Current month styling
+                  if (isCurrent) {
+                    const remaining = originalTarget - lbs
+                    return (
+                      <div key={month} className="text-center p-2 rounded bg-[#49868C] text-white">
+                        <div className="text-xs mb-1 uppercase">{month}</div>
+                        <div className="flex items-center justify-center gap-2 my-1">
+                          <span className="text-sm font-medium">{lbs.toLocaleString()}</span>
+                          <span className="text-[11px] font-normal bg-white rounded px-2 py-0.5 text-green-700 uppercase shadow-sm">
+                            {remaining} to go
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Future month styling
+                  if (isFuture) {
+                    return (
+                      <div key={month} className="text-center p-2 rounded bg-gray-50">
+                        <div className="text-xs mb-1 text-gray-300 uppercase">{month}</div>
+                        <div className="text-sm font-medium text-gray-300">-</div>
+                      </div>
+                    )
+                  }
+
+                  // Past months with above/below target indicators
+                  const bgColor = aboveTarget ? 'bg-green-50' : 'bg-orange-50'
+                  const textColor = aboveTarget ? 'text-green-600' : 'text-orange-600'
+                  const labelColor = aboveTarget ? 'text-green-700' : 'text-orange-600'
+
+                  return (
+                    <div key={month} className={`text-center p-2 rounded ${bgColor}`}>
+                      <div className={`text-xs mb-1 ${labelColor} opacity-80 uppercase`}>{month}</div>
+                      <div className="flex items-center justify-center gap-2 my-1">
+                        <span className={`text-sm font-medium ${textColor}`}>{lbs.toLocaleString()}</span>
+                        <span className={`text-[11px] font-normal bg-white rounded px-1 py-0.5 ${textColor} flex items-center gap-0.5 shadow-sm`}>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            className={aboveTarget ? 'rotate-180' : ''}
+                          >
+                            <path
+                              d="M19 9L12 15L5 9"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          {diff}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+          <p className="text-black/70 text-sm mt-6">
+            To stay on track: <span className="font-medium text-gray-700">{Math.round(remainingLbs / 6).toLocaleString()} lbs/month</span> for remaining 6 months
+          </p>
+        </div>
       </div>
 
       {/* Program Activity - shows all programs, members can use any to meet commitment */}
