@@ -1085,7 +1085,7 @@ function AdminView({
       {selectedMember && (
         <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/30" onClick={() => setSelectedMember(null)} />
-          <div className="absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-xl overflow-y-auto">
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-4xl bg-white shadow-xl overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
               <h2 className="text-gray-700 font-medium">{selectedMember.memberName}</h2>
               <button onClick={() => setSelectedMember(null)} className="text-gray-400 hover:text-gray-600 p-2">
