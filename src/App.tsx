@@ -314,11 +314,21 @@ function MemberPortalView({ member }: { member: MemberData }) {
 
   const remainingLbs = Math.max(0, proratedCommitment - totalLbs)
 
+  // Interactive calculator state for "Remaining to Reach Commitment"
+  const [calculatorValues, setCalculatorValues] = useState<Record<ProgramType, number>>({
+    inStore: 0,
+    mailBack: 0,
+    obsolete: 0,
+  })
+
+  // Track which sliders were touched (for 3-program logic)
+  const [touchedSliders, setTouchedSliders] = useState<ProgramType[]>([])
+
   return (
     <main className="max-w-6xl mx-auto px-6 py-8">
       {/* Page Title - simplified, member knows who they are */}
       <div className="mb-8">
-        <h1 className="text-xl font-semibold text-gray-900 tracking-wide uppercase">
+        <h1 className="text-xl font-semibold text-gray-900">
           Collection Commitment Tracker
         </h1>
         <p className="text-gray-400 text-sm mt-1">Cycle: Apr 2026 - Mar 2027</p>
@@ -402,6 +412,27 @@ function MemberPortalView({ member }: { member: MemberData }) {
             const originalTarget = Math.round(proratedCommitment / 12)
             const currentMonthIndex = 6  // Demo: October is current month
 
+            // Calculate program breakdown proportions for tooltips
+            const getProgramBreakdown = (monthLbs: number) => {
+              const breakdown: string[] = []
+              if (member.enrolledPrograms.includes('inStore') && stats.inStoreLbs > 0) {
+                const proportion = stats.inStoreLbs / totalLbs
+                const monthlyInStore = Math.round(monthLbs * proportion)
+                breakdown.push(`In-Store: ${monthlyInStore} lbs`)
+              }
+              if (member.enrolledPrograms.includes('mailBack') && stats.mailBackLbs > 0) {
+                const proportion = stats.mailBackLbs / totalLbs
+                const monthlyMailBack = Math.round(monthLbs * proportion)
+                breakdown.push(`Mail-Back: ${monthlyMailBack} lbs`)
+              }
+              if (member.enrolledPrograms.includes('obsolete') && stats.obsoleteLbs > 0) {
+                const proportion = stats.obsoleteLbs / totalLbs
+                const monthlyObsolete = Math.round(monthLbs * proportion)
+                breakdown.push(`Obsolete: ${monthlyObsolete} lbs`)
+              }
+              return breakdown.join('\n')
+            }
+
             return (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {months.map((month, i) => {
@@ -415,14 +446,23 @@ function MemberPortalView({ member }: { member: MemberData }) {
                   if (isCurrent) {
                     const remaining = originalTarget - lbs
                     return (
-                      <div key={month} className="text-center p-2 rounded bg-[#49868C] text-white">
+                      <div
+                        key={month}
+                        className="text-center p-2 rounded bg-[#49868C] text-white relative group"
+                        title={lbs > 0 ? getProgramBreakdown(lbs) : ''}
+                      >
                         <div className="text-xs mb-1 uppercase">{month}</div>
                         <div className="flex items-center justify-center gap-2 my-1">
                           <span className="text-sm font-medium">{lbs.toLocaleString()}</span>
-                          <span className="text-[11px] font-normal bg-white rounded px-2 py-0.5 text-green-700 uppercase shadow-sm">
+                          <span className="text-[11px] font-normal bg-white rounded px-2 py-0.5 text-green-700 uppercase">
                             {remaining} to go
                           </span>
                         </div>
+                        {lbs > 0 && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-pre-line transition-opacity z-10">
+                            {getProgramBreakdown(lbs)}
+                          </div>
+                        )}
                       </div>
                     )
                   }
@@ -443,11 +483,15 @@ function MemberPortalView({ member }: { member: MemberData }) {
                   const labelColor = aboveTarget ? 'text-green-700' : 'text-orange-600'
 
                   return (
-                    <div key={month} className={`text-center p-2 rounded ${bgColor}`}>
+                    <div
+                      key={month}
+                      className={`text-center p-2 rounded ${bgColor} relative group`}
+                      title={getProgramBreakdown(lbs)}
+                    >
                       <div className={`text-xs mb-1 ${labelColor} opacity-80 uppercase`}>{month}</div>
                       <div className="flex items-center justify-center gap-2 my-1">
                         <span className={`text-sm font-medium ${textColor}`}>{lbs.toLocaleString()}</span>
-                        <span className={`text-[11px] font-normal bg-white rounded px-1 py-0.5 ${textColor} flex items-center gap-0.5 shadow-sm`}>
+                        <span className={`text-[11px] font-normal bg-white rounded px-1 py-0.5 ${textColor} flex items-center gap-0.5`}>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="12"
@@ -466,6 +510,10 @@ function MemberPortalView({ member }: { member: MemberData }) {
                           </svg>
                           {diff}
                         </span>
+                      </div>
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-pre-line transition-opacity z-10">
+                        {getProgramBreakdown(lbs)}
                       </div>
                     </div>
                   )
@@ -487,7 +535,7 @@ function MemberPortalView({ member }: { member: MemberData }) {
             <tr className="text-left text-gray-400 text-xs border-b border-gray-100">
               <th className="pb-3 font-medium">Program</th>
               <th className="pb-3 font-medium text-right">Processed</th>
-              <th className="pb-3 font-medium text-right">Max Capacity</th>
+              <th className="pb-3 font-medium text-right">Program Target</th>
               <th className="pb-3 font-medium text-right">Contribution</th>
             </tr>
           </thead>
@@ -528,34 +576,185 @@ function MemberPortalView({ member }: { member: MemberData }) {
         </table>
       </div>
 
-      {/* Remaining - only show if not complete, only enrolled programs */}
+      {/* Remaining - Interactive calculator to explore combinations */}
       {remainingLbs > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-          <h2 className="text-gray-700 font-medium mb-4">To Reach Commitment</h2>
-          <p className="text-gray-500 text-sm mb-3">Can be fulfilled by any of:</p>
-          <div className="space-y-2">
-            {member.enrolledPrograms.includes('inStore') && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">In-Store Boxes</span>
-                <span className="font-semibold text-gray-700">{Math.ceil((remainingLbs / tier.annualCommitment) * tier.binsCapacity).toLocaleString()} boxes</span>
-              </div>
-            )}
-            {member.enrolledPrograms.includes('mailBack') && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Mail-Back Packages</span>
-                <span className="font-semibold text-gray-700">{Math.ceil((remainingLbs / tier.annualCommitment) * tier.packagesCapacity).toLocaleString()} packages</span>
-              </div>
-            )}
-            {member.enrolledPrograms.includes('obsolete') && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Obsolete Inventory</span>
-                <span className="font-semibold text-gray-700">{Math.ceil((remainingLbs / tier.annualCommitment) * tier.obsoleteCapacity).toLocaleString()} lbs</span>
-              </div>
-            )}
-          </div>
-          {member.enrolledPrograms.length > 1 && (
-            <p className="text-xs text-gray-400 mt-3">Or any combination across your programs</p>
-          )}
+          <h2 className="text-gray-700 font-medium mb-4">Remaining to Reach Commitment</h2>
+          <p className="text-gray-500 text-sm mb-4">
+            {member.enrolledPrograms.length === 2
+              ? 'Adjust either slider - the other will update to complete the commitment:'
+              : 'Set any 2 sliders - the 3rd will automatically adjust to complete the commitment:'}
+          </p>
+
+          {(() => {
+            // Calculate total lbs from calculator values
+            const calculatorLbs = member.enrolledPrograms.reduce((sum, program) => {
+              const units = calculatorValues[program]
+              if (program === 'inStore') {
+                return sum + Math.round((units / tier.binsCapacity) * tier.annualCommitment)
+              } else if (program === 'mailBack') {
+                return sum + Math.round((units / tier.packagesCapacity) * tier.annualCommitment)
+              } else if (program === 'obsolete') {
+                return sum + Math.round((units / tier.obsoleteCapacity) * tier.annualCommitment)
+              }
+              return sum
+            }, 0)
+
+            const stillRemaining = Math.max(0, remainingLbs - calculatorLbs)
+
+            // Handler that adjusts other sliders when one changes
+            const handleSliderChange = (changedProgram: ProgramType, newValue: number) => {
+              // Update touched sliders list (keep last 2 for 3-program members)
+              const newTouched = [changedProgram, ...touchedSliders.filter(p => p !== changedProgram)].slice(0, 2)
+              setTouchedSliders(newTouched)
+
+              // Calculate lbs contribution from the changed slider
+              let changedLbs = 0
+              if (changedProgram === 'inStore') {
+                changedLbs = Math.round((newValue / tier.binsCapacity) * tier.annualCommitment)
+              } else if (changedProgram === 'mailBack') {
+                changedLbs = Math.round((newValue / tier.packagesCapacity) * tier.annualCommitment)
+              } else if (changedProgram === 'obsolete') {
+                changedLbs = Math.round((newValue / tier.obsoleteCapacity) * tier.annualCommitment)
+              }
+
+              const newValues: Record<ProgramType, number> = { ...calculatorValues, [changedProgram]: newValue }
+
+              // Get other enrolled programs
+              const otherPrograms = member.enrolledPrograms.filter(p => p !== changedProgram)
+
+              if (otherPrograms.length === 1) {
+                // 2-program member: adjust the other program to complete commitment
+                const stillNeeded = Math.max(0, remainingLbs - changedLbs)
+                const otherProgram = otherPrograms[0]
+                if (otherProgram === 'inStore') {
+                  newValues.inStore = Math.round((stillNeeded / tier.annualCommitment) * tier.binsCapacity)
+                } else if (otherProgram === 'mailBack') {
+                  newValues.mailBack = Math.round((stillNeeded / tier.annualCommitment) * tier.packagesCapacity)
+                } else if (otherProgram === 'obsolete') {
+                  newValues.obsolete = Math.round((stillNeeded / tier.annualCommitment) * tier.obsoleteCapacity)
+                }
+              } else if (otherPrograms.length === 2) {
+                // 3-program member: user sets 2 sliders, 3rd auto-adjusts
+                // If user has touched 2+ sliders, calculate the 3rd one
+                if (newTouched.length >= 2) {
+                  // Calculate lbs from the 2 touched sliders
+                  let touchedLbs = 0
+                  newTouched.forEach(prog => {
+                    const val = prog === changedProgram ? newValue : calculatorValues[prog]
+                    if (prog === 'inStore') {
+                      touchedLbs += Math.round((val / tier.binsCapacity) * tier.annualCommitment)
+                    } else if (prog === 'mailBack') {
+                      touchedLbs += Math.round((val / tier.packagesCapacity) * tier.annualCommitment)
+                    } else if (prog === 'obsolete') {
+                      touchedLbs += Math.round((val / tier.obsoleteCapacity) * tier.annualCommitment)
+                    }
+                  })
+
+                  // The untouched program fills the gap
+                  const untouchedProgram = member.enrolledPrograms.find(p => !newTouched.includes(p))
+                  const stillNeeded = Math.max(0, remainingLbs - touchedLbs)
+
+                  if (untouchedProgram === 'inStore') {
+                    newValues.inStore = Math.round((stillNeeded / tier.annualCommitment) * tier.binsCapacity)
+                  } else if (untouchedProgram === 'mailBack') {
+                    newValues.mailBack = Math.round((stillNeeded / tier.annualCommitment) * tier.packagesCapacity)
+                  } else if (untouchedProgram === 'obsolete') {
+                    newValues.obsolete = Math.round((stillNeeded / tier.annualCommitment) * tier.obsoleteCapacity)
+                  }
+                }
+                // If only 1 slider touched so far, just update that one value (others stay at current)
+              }
+
+              setCalculatorValues(newValues)
+            }
+
+            return (
+              <>
+                <div className="space-y-4">
+                  {member.enrolledPrograms.includes('inStore') && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">In-Store Boxes</span>
+                        <span className="text-sm text-gray-500">
+                          {calculatorValues.inStore} boxes = {Math.round((calculatorValues.inStore / tier.binsCapacity) * tier.annualCommitment).toLocaleString()} lbs
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max={Math.ceil((remainingLbs / tier.annualCommitment) * tier.binsCapacity)}
+                        value={calculatorValues.inStore}
+                        onChange={(e) => handleSliderChange('inStore', parseInt(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#49868C]"
+                      />
+                    </div>
+                  )}
+
+                  {member.enrolledPrograms.includes('mailBack') && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Mail-Back Packages</span>
+                        <span className="text-sm text-gray-500">
+                          {calculatorValues.mailBack.toLocaleString()} pkg = {Math.round((calculatorValues.mailBack / tier.packagesCapacity) * tier.annualCommitment).toLocaleString()} lbs
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max={Math.ceil((remainingLbs / tier.annualCommitment) * tier.packagesCapacity)}
+                        value={calculatorValues.mailBack}
+                        onChange={(e) => handleSliderChange('mailBack', parseInt(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#49868C]"
+                      />
+                    </div>
+                  )}
+
+                  {member.enrolledPrograms.includes('obsolete') && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Obsolete Inventory</span>
+                        <span className="text-sm text-gray-500">
+                          {calculatorValues.obsolete.toLocaleString()} lbs = {Math.round((calculatorValues.obsolete / tier.obsoleteCapacity) * tier.annualCommitment).toLocaleString()} lbs
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max={Math.ceil((remainingLbs / tier.annualCommitment) * tier.obsoleteCapacity)}
+                        value={calculatorValues.obsolete}
+                        onChange={(e) => handleSliderChange('obsolete', parseInt(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#49868C]"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Summary */}
+                <div className="mt-4 p-4 bg-[#49868C]/5 rounded-lg border border-[#49868C]/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">With these amounts:</span>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Total contribution: {calculatorLbs.toLocaleString()} lbs</p>
+                      <p className={`text-sm font-semibold ${stillRemaining === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                        {stillRemaining === 0 ? 'Commitment reached! ✓' : `Still need: ${stillRemaining.toLocaleString()} lbs`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setCalculatorValues({ inStore: 0, mailBack: 0, obsolete: 0 })
+                    setTouchedSliders([])
+                  }}
+                  className="mt-3 text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Reset calculator
+                </button>
+              </>
+            )
+          })()}
         </div>
       )}
 
@@ -691,7 +890,7 @@ function AdminView({
     <main className="max-w-6xl mx-auto px-6 py-8">
       {/* Page Title */}
       <div className="mb-8">
-        <h1 className="text-xl font-semibold text-gray-900 tracking-wide uppercase">
+        <h1 className="text-xl font-semibold text-gray-900">
           Collection Commitment Tracker
         </h1>
         <p className="text-gray-400 text-sm mt-1">Admin View</p>
