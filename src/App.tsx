@@ -339,7 +339,7 @@ function MemberPortalView({ member }: { member: MemberData }) {
         </div>
       )}
 
-      {/* Program Activity - shows what's been processed in each program */}
+      {/* Program Activity - shows what's been processed vs annual requirement per program */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
         <h2 className="text-gray-700 font-medium mb-4">Programs Processed</h2>
         <p className="text-gray-500 text-sm mb-4">
@@ -487,7 +487,7 @@ function MemberPortalView({ member }: { member: MemberData }) {
                       <input
                         type="range"
                         min="0"
-                        max={Math.ceil((remainingLbs / tier.annualCommitment) * tier.binsCapacity)}
+                        max={tier.binsCapacity - member.programs.inStore.processed}
                         value={calculatorValues.inStore}
                         onChange={(e) => handleSliderChange('inStore', parseInt(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#49868C]"
@@ -506,7 +506,7 @@ function MemberPortalView({ member }: { member: MemberData }) {
                       <input
                         type="range"
                         min="0"
-                        max={Math.ceil((remainingLbs / tier.annualCommitment) * tier.packagesCapacity)}
+                        max={tier.packagesCapacity - member.programs.mailBack.processed}
                         value={calculatorValues.mailBack}
                         onChange={(e) => handleSliderChange('mailBack', parseInt(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#49868C]"
@@ -525,7 +525,7 @@ function MemberPortalView({ member }: { member: MemberData }) {
                       <input
                         type="range"
                         min="0"
-                        max={Math.ceil((remainingLbs / tier.annualCommitment) * tier.obsoleteCapacity)}
+                        max={tier.obsoleteCapacity - member.programs.obsolete.processed}
                         value={calculatorValues.obsolete}
                         onChange={(e) => handleSliderChange('obsolete', parseInt(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#49868C]"
