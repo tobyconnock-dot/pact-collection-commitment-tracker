@@ -306,11 +306,7 @@ function Header({ viewMode, setViewMode }: { viewMode: 'member' | 'admin'; setVi
 // Member Portal View - shows single member's dashboard
 function MemberPortalView({ member }: { member: MemberData }) {
   const stats = getMemberStats(member)
-  const { tier, proratedCommitment, monthsInCycle, prorationPercent, totalLbs, percentage } = stats
-
-  const proratedBinsCapacity = Math.round(tier.binsCapacity * prorationPercent)
-  const proratedPackagesCapacity = Math.round(tier.packagesCapacity * prorationPercent)
-  const proratedObsoleteCapacity = Math.round(tier.obsoleteCapacity * prorationPercent)
+  const { tier, proratedCommitment, monthsInCycle, totalLbs } = stats
 
   const remainingLbs = Math.max(0, proratedCommitment - totalLbs)
 
@@ -343,157 +339,46 @@ function MemberPortalView({ member }: { member: MemberData }) {
         </div>
       )}
 
-      {/* Progress Card */}
+      {/* Program Activity - shows what's been processed in each program */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-        <div className="flex flex-col-reverse gap-4 items-baseline">
-          {/* Percentage and collected amount */}
-          <div>
-            <p className={`text-5xl font-normal ${
-              percentage >= 70 ? 'text-green-600' :
-              percentage >= 50 ? 'text-orange-500' :
-              'text-red-400'
-            }`}>
-              {Math.round(percentage)}%
-            </p>
-            <p className="text-black/70 text-sm mt-4">
-              {totalLbs.toLocaleString()} of {proratedCommitment.toLocaleString()} lbs collected
-            </p>
-          </div>
+        <h2 className="text-gray-700 font-medium mb-4">Programs Processed</h2>
+        <p className="text-gray-500 text-sm mb-4">
+          You can meet your commitment through any combination of your enrolled programs.
+        </p>
 
-          {/* Circular Progress Indicator */}
-          <div className="relative w-[120px] h-[120px]">
-            <svg className="w-[120px] h-[120px] -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="rgba(0,0,0,0.2)"
-                strokeWidth="8"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke={
-                  percentage >= 70 ? 'rgb(22, 163, 74)' :
-                  percentage >= 50 ? 'rgb(249, 115, 22)' :
-                  'rgb(248, 113, 113)'
-                }
-                strokeWidth="8"
-                strokeDasharray={`${Math.min(percentage, 100) * 2.51} 251`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-center">
-              <span className="text-black/80 text-[10px] font-medium leading-tight uppercase">
-                {remainingLbs > 0 ? (
-                  <>{remainingLbs.toLocaleString()} lbs<br />to go</>
-                ) : 'Complete!'}
-              </span>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {member.enrolledPrograms.includes('inStore') && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="text-xs text-gray-400 uppercase mb-1">In-Store Boxes</div>
+              <div className="text-2xl font-semibold text-gray-800">
+                {member.programs.inStore.processed.toLocaleString()}
+                <span className="text-lg font-normal text-gray-400"> / {tier.binsCapacity.toLocaleString()}</span>
+              </div>
+              <div className="text-sm text-gray-500">boxes processed</div>
             </div>
-          </div>
-
-          {/* Label */}
-          <p className="text-gray-700 font-medium">Progress to Commitment</p>
+          )}
+          {member.enrolledPrograms.includes('mailBack') && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="text-xs text-gray-400 uppercase mb-1">Mail-Back Packages</div>
+              <div className="text-2xl font-semibold text-gray-800">
+                {member.programs.mailBack.processed.toLocaleString()}
+                <span className="text-lg font-normal text-gray-400"> / {tier.packagesCapacity.toLocaleString()}</span>
+              </div>
+              <div className="text-sm text-gray-500">packages processed</div>
+            </div>
+          )}
+          {member.enrolledPrograms.includes('obsolete') && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="text-xs text-gray-400 uppercase mb-1">Obsolete Inventory</div>
+              <div className="text-2xl font-semibold text-gray-800">
+                {member.programs.obsolete.processed.toLocaleString()}
+                <span className="text-lg font-normal text-gray-400"> / {tier.obsoleteCapacity.toLocaleString()}</span>
+              </div>
+              <div className="text-sm text-gray-500">lbs processed</div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Program Activity - shows all programs with time-based tracking status */}
-      {(() => {
-        // Calculate time elapsed in cycle (demo: 6 months elapsed out of 12)
-        const monthsElapsed = 6
-        const timeElapsedPercent = (monthsElapsed / TOTAL_CYCLE_MONTHS) * 100
-
-        // Helper to get tracking status based on processed vs expected at this point in time
-        const getTrackingStatus = (processed: number, target: number) => {
-          if (target === 0) return { color: 'text-gray-400', bg: 'bg-gray-100', label: '-', icon: null }
-          const processedPercent = (processed / target) * 100
-          // Compare to time elapsed - are they on track for where they should be?
-          const expectedAtThisPoint = timeElapsedPercent
-          const ratio = processedPercent / expectedAtThisPoint
-
-          if (ratio >= 1) {
-            return { color: 'text-green-600', bg: 'bg-green-50', label: 'On track', icon: '↑' }
-          } else if (ratio >= 0.7) {
-            return { color: 'text-orange-500', bg: 'bg-orange-50', label: 'Slightly behind', icon: '→' }
-          } else {
-            return { color: 'text-red-500', bg: 'bg-red-50', label: 'Behind', icon: '↓' }
-          }
-        }
-
-        const inStoreStatus = getTrackingStatus(member.programs.inStore.processed, proratedBinsCapacity)
-        const mailBackStatus = getTrackingStatus(member.programs.mailBack.processed, proratedPackagesCapacity)
-        const obsoleteStatus = getTrackingStatus(member.programs.obsolete.processed, proratedObsoleteCapacity)
-
-        return (
-          <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-gray-700 font-medium">Program Breakdown</h2>
-              <span className="text-xs text-gray-400">{monthsElapsed} of {TOTAL_CYCLE_MONTHS} months elapsed</span>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-400 text-xs border-b border-gray-100">
-                  <th className="pb-3 font-medium">Program</th>
-                  <th className="pb-3 font-medium text-right">Processed</th>
-                  <th className="pb-3 font-medium text-right">Target</th>
-                  <th className="pb-3 font-medium text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {member.enrolledPrograms.includes('inStore') && (
-                  <tr className="border-b border-gray-50">
-                    <td className="py-3 text-gray-700">In-Store Boxes</td>
-                    <td className="py-3 text-right text-gray-600 font-medium">{member.programs.inStore.processed} boxes</td>
-                    <td className="py-3 text-right text-gray-400">{proratedBinsCapacity} boxes</td>
-                    <td className="py-3 text-right">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${inStoreStatus.bg} ${inStoreStatus.color}`}>
-                        {inStoreStatus.icon && <span>{inStoreStatus.icon}</span>}
-                        {inStoreStatus.label}
-                      </span>
-                    </td>
-                  </tr>
-                )}
-                {member.enrolledPrograms.includes('mailBack') && (
-                  <tr className="border-b border-gray-50">
-                    <td className="py-3 text-gray-700">Mail-Back Packages</td>
-                    <td className="py-3 text-right text-gray-600 font-medium">{member.programs.mailBack.processed.toLocaleString()} pkg</td>
-                    <td className="py-3 text-right text-gray-400">{proratedPackagesCapacity.toLocaleString()} pkg</td>
-                    <td className="py-3 text-right">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${mailBackStatus.bg} ${mailBackStatus.color}`}>
-                        {mailBackStatus.icon && <span>{mailBackStatus.icon}</span>}
-                        {mailBackStatus.label}
-                      </span>
-                    </td>
-                  </tr>
-                )}
-                {member.enrolledPrograms.includes('obsolete') && (
-                  <tr className="border-b border-gray-50">
-                    <td className="py-3 text-gray-700">Obsolete Inventory</td>
-                    <td className="py-3 text-right text-gray-600 font-medium">{member.programs.obsolete.processed.toLocaleString()} lbs</td>
-                    <td className="py-3 text-right text-gray-400">{proratedObsoleteCapacity.toLocaleString()} lbs</td>
-                    <td className="py-3 text-right">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${obsoleteStatus.bg} ${obsoleteStatus.color}`}>
-                        {obsoleteStatus.icon && <span>{obsoleteStatus.icon}</span>}
-                        {obsoleteStatus.label}
-                      </span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-gray-200">
-                  <td className="py-3 font-medium text-gray-700">Total Contribution</td>
-                  <td colSpan={2} className="py-3 text-right text-gray-600">{totalLbs.toLocaleString()} lbs toward commitment</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )
-      })()}
 
       {/* Remaining - Interactive calculator to explore combinations */}
       {remainingLbs > 0 && (
@@ -595,8 +480,8 @@ function MemberPortalView({ member }: { member: MemberData }) {
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">In-Store Boxes</span>
-                        <span className="text-sm text-gray-500">
-                          {calculatorValues.inStore} boxes = {Math.round((calculatorValues.inStore / tier.binsCapacity) * tier.annualCommitment).toLocaleString()} lbs
+                        <span className="text-sm font-semibold text-[#49868C]">
+                          {calculatorValues.inStore.toLocaleString()} boxes
                         </span>
                       </div>
                       <input
@@ -614,8 +499,8 @@ function MemberPortalView({ member }: { member: MemberData }) {
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">Mail-Back Packages</span>
-                        <span className="text-sm text-gray-500">
-                          {calculatorValues.mailBack.toLocaleString()} pkg = {Math.round((calculatorValues.mailBack / tier.packagesCapacity) * tier.annualCommitment).toLocaleString()} lbs
+                        <span className="text-sm font-semibold text-[#49868C]">
+                          {calculatorValues.mailBack.toLocaleString()} packages
                         </span>
                       </div>
                       <input
@@ -633,8 +518,8 @@ function MemberPortalView({ member }: { member: MemberData }) {
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">Obsolete Inventory</span>
-                        <span className="text-sm text-gray-500">
-                          {calculatorValues.obsolete.toLocaleString()} lbs = {Math.round((calculatorValues.obsolete / tier.obsoleteCapacity) * tier.annualCommitment).toLocaleString()} lbs
+                        <span className="text-sm font-semibold text-[#49868C]">
+                          {calculatorValues.obsolete.toLocaleString()} lbs
                         </span>
                       </div>
                       <input
@@ -650,16 +535,10 @@ function MemberPortalView({ member }: { member: MemberData }) {
                 </div>
 
                 {/* Summary */}
-                <div className="mt-4 p-4 bg-[#49868C]/5 rounded-lg border border-[#49868C]/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">With these amounts:</span>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Total contribution: {calculatorLbs.toLocaleString()} lbs</p>
-                      <p className={`text-sm font-semibold ${stillRemaining === 0 ? 'text-green-600' : 'text-orange-600'}`}>
-                        {stillRemaining === 0 ? 'Commitment reached! ✓' : `Still need: ${stillRemaining.toLocaleString()} lbs`}
-                      </p>
-                    </div>
-                  </div>
+                <div className={`mt-4 p-4 rounded-lg border ${stillRemaining === 0 ? 'bg-green-50 border-green-200' : 'bg-[#49868C]/5 border-[#49868C]/20'}`}>
+                  <p className={`text-sm font-semibold text-center ${stillRemaining === 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                    {stillRemaining === 0 ? 'Commitment reached! ✓' : 'Adjust sliders to find a combination that meets your commitment'}
+                  </p>
                 </div>
 
                 <button
