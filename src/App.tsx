@@ -343,238 +343,157 @@ function MemberPortalView({ member }: { member: MemberData }) {
         </div>
       )}
 
-      {/* Progress and Monthly Collections - Side by side */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-6">
-        {/* Progress Card */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6 lg:flex-shrink-0">
-          <div className="flex flex-col-reverse gap-4 items-baseline">
-            {/* Percentage and collected amount */}
-            <div>
-              <p className={`text-5xl font-normal ${
-                percentage >= 70 ? 'text-green-600' :
-                percentage >= 50 ? 'text-orange-500' :
-                'text-red-400'
-              }`}>
-                {Math.round(percentage)}%
-              </p>
-              <p className="text-black/70 text-sm mt-4">
-                {totalLbs.toLocaleString()} of {proratedCommitment.toLocaleString()} lbs collected
-              </p>
-            </div>
-
-            {/* Circular Progress Indicator */}
-            <div className="relative w-[120px] h-[120px]">
-              <svg className="w-[120px] h-[120px] -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke="rgba(0,0,0,0.2)"
-                  strokeWidth="8"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke={
-                    percentage >= 70 ? 'rgb(22, 163, 74)' :
-                    percentage >= 50 ? 'rgb(249, 115, 22)' :
-                    'rgb(248, 113, 113)'
-                  }
-                  strokeWidth="8"
-                  strokeDasharray={`${Math.min(percentage, 100) * 2.51} 251`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-center">
-                <span className="text-black/80 text-[10px] font-medium leading-tight uppercase">
-                  {remainingLbs > 0 ? (
-                    <>{remainingLbs.toLocaleString()} lbs<br />to go</>
-                  ) : 'Complete!'}
-                </span>
-              </div>
-            </div>
-
-            {/* Label */}
-            <p className="text-gray-700 font-medium">Progress to Commitment</p>
-          </div>
-        </div>
-
-        {/* Monthly Collections */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6 flex-grow">
-          <h2 className="text-gray-700 font-medium mb-4">Monthly Collections</h2>
-          {(() => {
-            // Demo: distribute totalLbs across first 6 months (Apr-Sep), rest are future
-            const months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-            const distribution = [0.12, 0.14, 0.16, 0.18, 0.20, 0.20, 0, 0, 0, 0, 0, 0]
-            const originalTarget = Math.round(proratedCommitment / 12)
-            const currentMonthIndex = 6  // Demo: October is current month
-
-            // Calculate program breakdown proportions for tooltips
-            const getProgramBreakdown = (monthLbs: number) => {
-              const breakdown: string[] = []
-              if (member.enrolledPrograms.includes('inStore') && stats.inStoreLbs > 0) {
-                const proportion = stats.inStoreLbs / totalLbs
-                const monthlyInStore = Math.round(monthLbs * proportion)
-                breakdown.push(`In-Store: ${monthlyInStore} lbs`)
-              }
-              if (member.enrolledPrograms.includes('mailBack') && stats.mailBackLbs > 0) {
-                const proportion = stats.mailBackLbs / totalLbs
-                const monthlyMailBack = Math.round(monthLbs * proportion)
-                breakdown.push(`Mail-Back: ${monthlyMailBack} lbs`)
-              }
-              if (member.enrolledPrograms.includes('obsolete') && stats.obsoleteLbs > 0) {
-                const proportion = stats.obsoleteLbs / totalLbs
-                const monthlyObsolete = Math.round(monthLbs * proportion)
-                breakdown.push(`Obsolete: ${monthlyObsolete} lbs`)
-              }
-              return breakdown.join('\n')
-            }
-
-            return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                {months.map((month, i) => {
-                  const lbs = Math.round(totalLbs * distribution[i])
-                  const isFuture = distribution[i] === 0
-                  const isCurrent = i === currentMonthIndex
-                  const aboveTarget = lbs >= originalTarget
-                  const diff = Math.abs(lbs - originalTarget)
-
-                  // Current month styling
-                  if (isCurrent) {
-                    const remaining = originalTarget - lbs
-                    return (
-                      <div
-                        key={month}
-                        className="text-center p-2 rounded bg-[#49868C] text-white relative group"
-                        title={lbs > 0 ? getProgramBreakdown(lbs) : ''}
-                      >
-                        <div className="text-xs mb-1 uppercase">{month}</div>
-                        <div className="flex items-center justify-center gap-2 my-1">
-                          <span className="text-sm font-medium">{lbs.toLocaleString()}</span>
-                          <span className="text-[11px] font-normal bg-white rounded px-2 py-0.5 text-green-700 uppercase">
-                            {remaining} to go
-                          </span>
-                        </div>
-                        {lbs > 0 && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-pre-line transition-opacity z-10">
-                            {getProgramBreakdown(lbs)}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  }
-
-                  // Future month styling
-                  if (isFuture) {
-                    return (
-                      <div key={month} className="text-center p-2 rounded bg-gray-50">
-                        <div className="text-xs mb-1 text-gray-300 uppercase">{month}</div>
-                        <div className="text-sm font-medium text-gray-300">-</div>
-                      </div>
-                    )
-                  }
-
-                  // Past months with above/below target indicators
-                  const bgColor = aboveTarget ? 'bg-green-50' : 'bg-orange-50'
-                  const textColor = aboveTarget ? 'text-green-600' : 'text-orange-600'
-                  const labelColor = aboveTarget ? 'text-green-700' : 'text-orange-600'
-
-                  return (
-                    <div
-                      key={month}
-                      className={`text-center p-2 rounded ${bgColor} relative group`}
-                      title={getProgramBreakdown(lbs)}
-                    >
-                      <div className={`text-xs mb-1 ${labelColor} opacity-80 uppercase`}>{month}</div>
-                      <div className="flex items-center justify-center gap-2 my-1">
-                        <span className={`text-sm font-medium ${textColor}`}>{lbs.toLocaleString()}</span>
-                        <span className={`text-[11px] font-normal bg-white rounded px-1 py-0.5 ${textColor} flex items-center gap-0.5`}>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="12"
-                            height="12"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            className={aboveTarget ? 'rotate-180' : ''}
-                          >
-                            <path
-                              d="M19 9L12 15L5 9"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          {diff}
-                        </span>
-                      </div>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-pre-line transition-opacity z-10">
-                        {getProgramBreakdown(lbs)}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })()}
-          <p className="text-black/70 text-sm mt-6">
-            To stay on track: <span className="font-medium text-gray-700">{Math.round(remainingLbs / 6).toLocaleString()} lbs/month</span> for remaining 6 months
-          </p>
-        </div>
-      </div>
-
-      {/* Program Activity - shows all programs, members can use any to meet commitment */}
+      {/* Progress Card */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-        <h2 className="text-gray-700 font-medium mb-4">Program Breakdown</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-400 text-xs border-b border-gray-100">
-              <th className="pb-3 font-medium">Program</th>
-              <th className="pb-3 font-medium text-right">Processed</th>
-              <th className="pb-3 font-medium text-right">Program Target</th>
-              <th className="pb-3 font-medium text-right">Contribution</th>
-            </tr>
-          </thead>
-          <tbody>
-            {member.enrolledPrograms.includes('inStore') && (
-              <tr className="border-b border-gray-50">
-                <td className="py-3 text-gray-700">In-Store Boxes</td>
-                <td className="py-3 text-right text-gray-500">{member.programs.inStore.processed} boxes</td>
-                <td className="py-3 text-right text-gray-400">{proratedBinsCapacity} boxes</td>
-                <td className="py-3 text-right font-semibold text-[#49868C]">{stats.inStoreLbs.toLocaleString()} lbs</td>
-              </tr>
-            )}
-            {member.enrolledPrograms.includes('mailBack') && (
-              <tr className="border-b border-gray-50">
-                <td className="py-3 text-gray-700">Mail-Back Packages</td>
-                <td className="py-3 text-right text-gray-500">{member.programs.mailBack.processed.toLocaleString()} pkg</td>
-                <td className="py-3 text-right text-gray-400">{proratedPackagesCapacity.toLocaleString()} pkg</td>
-                <td className="py-3 text-right font-semibold text-[#49868C]">{stats.mailBackLbs.toLocaleString()} lbs</td>
-              </tr>
-            )}
-            {member.enrolledPrograms.includes('obsolete') && (
-              <tr className="border-b border-gray-50">
-                <td className="py-3 text-gray-700">Obsolete Inventory</td>
-                <td className="py-3 text-right text-gray-500">{member.programs.obsolete.processed.toLocaleString()} lbs</td>
-                <td className="py-3 text-right text-gray-400">{proratedObsoleteCapacity.toLocaleString()} lbs</td>
-                <td className="py-3 text-right font-semibold text-[#49868C]">{stats.obsoleteLbs.toLocaleString()} lbs</td>
-              </tr>
-            )}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-gray-200">
-              <td className="py-3 font-medium text-gray-700">Total</td>
-              <td></td>
-              <td></td>
-              <td className="py-3 text-right font-semibold text-[#49868C]">{totalLbs.toLocaleString()} lbs</td>
-            </tr>
-          </tfoot>
-        </table>
+        <div className="flex flex-col-reverse gap-4 items-baseline">
+          {/* Percentage and collected amount */}
+          <div>
+            <p className={`text-5xl font-normal ${
+              percentage >= 70 ? 'text-green-600' :
+              percentage >= 50 ? 'text-orange-500' :
+              'text-red-400'
+            }`}>
+              {Math.round(percentage)}%
+            </p>
+            <p className="text-black/70 text-sm mt-4">
+              {totalLbs.toLocaleString()} of {proratedCommitment.toLocaleString()} lbs collected
+            </p>
+          </div>
+
+          {/* Circular Progress Indicator */}
+          <div className="relative w-[120px] h-[120px]">
+            <svg className="w-[120px] h-[120px] -rotate-90" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke="rgba(0,0,0,0.2)"
+                strokeWidth="8"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke={
+                  percentage >= 70 ? 'rgb(22, 163, 74)' :
+                  percentage >= 50 ? 'rgb(249, 115, 22)' :
+                  'rgb(248, 113, 113)'
+                }
+                strokeWidth="8"
+                strokeDasharray={`${Math.min(percentage, 100) * 2.51} 251`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-center">
+              <span className="text-black/80 text-[10px] font-medium leading-tight uppercase">
+                {remainingLbs > 0 ? (
+                  <>{remainingLbs.toLocaleString()} lbs<br />to go</>
+                ) : 'Complete!'}
+              </span>
+            </div>
+          </div>
+
+          {/* Label */}
+          <p className="text-gray-700 font-medium">Progress to Commitment</p>
+        </div>
       </div>
+
+      {/* Program Activity - shows all programs with time-based tracking status */}
+      {(() => {
+        // Calculate time elapsed in cycle (demo: 6 months elapsed out of 12)
+        const monthsElapsed = 6
+        const timeElapsedPercent = (monthsElapsed / TOTAL_CYCLE_MONTHS) * 100
+
+        // Helper to get tracking status based on processed vs expected at this point in time
+        const getTrackingStatus = (processed: number, target: number) => {
+          if (target === 0) return { color: 'text-gray-400', bg: 'bg-gray-100', label: '-', icon: null }
+          const processedPercent = (processed / target) * 100
+          // Compare to time elapsed - are they on track for where they should be?
+          const expectedAtThisPoint = timeElapsedPercent
+          const ratio = processedPercent / expectedAtThisPoint
+
+          if (ratio >= 1) {
+            return { color: 'text-green-600', bg: 'bg-green-50', label: 'On track', icon: '↑' }
+          } else if (ratio >= 0.7) {
+            return { color: 'text-orange-500', bg: 'bg-orange-50', label: 'Slightly behind', icon: '→' }
+          } else {
+            return { color: 'text-red-500', bg: 'bg-red-50', label: 'Behind', icon: '↓' }
+          }
+        }
+
+        const inStoreStatus = getTrackingStatus(member.programs.inStore.processed, proratedBinsCapacity)
+        const mailBackStatus = getTrackingStatus(member.programs.mailBack.processed, proratedPackagesCapacity)
+        const obsoleteStatus = getTrackingStatus(member.programs.obsolete.processed, proratedObsoleteCapacity)
+
+        return (
+          <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-gray-700 font-medium">Program Breakdown</h2>
+              <span className="text-xs text-gray-400">{monthsElapsed} of {TOTAL_CYCLE_MONTHS} months elapsed</span>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-400 text-xs border-b border-gray-100">
+                  <th className="pb-3 font-medium">Program</th>
+                  <th className="pb-3 font-medium text-right">Processed</th>
+                  <th className="pb-3 font-medium text-right">Target</th>
+                  <th className="pb-3 font-medium text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {member.enrolledPrograms.includes('inStore') && (
+                  <tr className="border-b border-gray-50">
+                    <td className="py-3 text-gray-700">In-Store Boxes</td>
+                    <td className="py-3 text-right text-gray-600 font-medium">{member.programs.inStore.processed} boxes</td>
+                    <td className="py-3 text-right text-gray-400">{proratedBinsCapacity} boxes</td>
+                    <td className="py-3 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${inStoreStatus.bg} ${inStoreStatus.color}`}>
+                        {inStoreStatus.icon && <span>{inStoreStatus.icon}</span>}
+                        {inStoreStatus.label}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {member.enrolledPrograms.includes('mailBack') && (
+                  <tr className="border-b border-gray-50">
+                    <td className="py-3 text-gray-700">Mail-Back Packages</td>
+                    <td className="py-3 text-right text-gray-600 font-medium">{member.programs.mailBack.processed.toLocaleString()} pkg</td>
+                    <td className="py-3 text-right text-gray-400">{proratedPackagesCapacity.toLocaleString()} pkg</td>
+                    <td className="py-3 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${mailBackStatus.bg} ${mailBackStatus.color}`}>
+                        {mailBackStatus.icon && <span>{mailBackStatus.icon}</span>}
+                        {mailBackStatus.label}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {member.enrolledPrograms.includes('obsolete') && (
+                  <tr className="border-b border-gray-50">
+                    <td className="py-3 text-gray-700">Obsolete Inventory</td>
+                    <td className="py-3 text-right text-gray-600 font-medium">{member.programs.obsolete.processed.toLocaleString()} lbs</td>
+                    <td className="py-3 text-right text-gray-400">{proratedObsoleteCapacity.toLocaleString()} lbs</td>
+                    <td className="py-3 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${obsoleteStatus.bg} ${obsoleteStatus.color}`}>
+                        {obsoleteStatus.icon && <span>{obsoleteStatus.icon}</span>}
+                        {obsoleteStatus.label}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-200">
+                  <td className="py-3 font-medium text-gray-700">Total Contribution</td>
+                  <td colSpan={2} className="py-3 text-right text-gray-600">{totalLbs.toLocaleString()} lbs toward commitment</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )
+      })()}
 
       {/* Remaining - Interactive calculator to explore combinations */}
       {remainingLbs > 0 && (
